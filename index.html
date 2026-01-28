@@ -1,0 +1,572 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>投资模拟系统 - 后端版</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    
+    body { 
+      font-family: 'Segoe UI', Arial, sans-serif; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      padding: 20px; 
+      min-height: 100vh;
+    }
+    
+    .box { 
+      background: #fff; 
+      padding: 30px; 
+      border-radius: 12px; 
+      max-width: 900px; 
+      margin: 20px auto; 
+      box-shadow: 0 10px 40px rgba(0,0,0,0.2); 
+    }
+    
+    h2, h3 { color: #333; margin-bottom: 20px; }
+    h2 { text-align: center; font-size: 28px; color: #667eea; }
+    h3 { font-size: 20px; margin-top: 30px; border-bottom: 2px solid #667eea; padding-bottom: 10px; }
+    
+    .input-group { margin-bottom: 15px; }
+    .input-group label { display: block; margin-bottom: 5px; color: #555; font-weight: 500; }
+    
+    input, select { 
+      width: 100%; padding: 12px; margin: 6px 0; 
+      border: 2px solid #e0e0e0; border-radius: 6px; font-size: 14px; 
+      transition: border-color 0.3s;
+    }
+    input:focus, select:focus { outline: none; border-color: #667eea; }
+    
+    button { 
+      width: 100%; padding: 12px; margin: 8px 0; 
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; border: none; cursor: pointer; border-radius: 6px;
+      font-size: 16px; font-weight: 600;
+      transition: transform 0.2s, box-shadow 0.2s;
+    }
+    button:hover { transform: translateY(-2px); box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4); }
+    button:active { transform: translateY(0); }
+    button.secondary { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+    button.danger { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+    
+    table { width: 100%; border-collapse: collapse; margin-top: 15px; background: white; }
+    th, td { border: 1px solid #e0e0e0; padding: 12px; text-align: center; }
+    th { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; font-weight: 600; }
+    tr:nth-child(even) { background: #f9f9f9; }
+    tr:hover { background: #f0f0ff; }
+    
+    .hidden { display: none; }
+    
+    .stats-card {
+      background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+      color: white; padding: 20px; border-radius: 8px; margin: 15px 0; text-align: center;
+    }
+    .stats-card h4 { font-size: 14px; opacity: 0.9; margin-bottom: 8px; }
+    .stats-card .value { font-size: 32px; font-weight: bold; }
+    
+    .history-item {
+      background: #f5f5f5; padding: 10px 15px; margin: 8px 0; 
+      border-radius: 6px; border-left: 4px solid #667eea;
+    }
+    .history-item.profit { border-left-color: #4caf50; }
+    .history-item.loss { border-left-color: #f44336; }
+    
+    .status-badge {
+      display: inline-block; padding: 4px 12px; border-radius: 12px;
+      font-size: 12px; font-weight: 600;
+    }
+    .status-badge.invested { background: #4caf50; color: white; }
+    .status-badge.waiting { background: #ff9800; color: white; }
+    
+    .grid {
+      display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+      gap: 15px; margin: 20px 0;
+    }
+    
+    .alert {
+      padding: 15px; margin: 15px 0; border-radius: 6px; font-weight: 500;
+    }
+    .alert.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb; }
+    .alert.warning { background: #fff3cd; color: #856404; border: 1px solid #ffeaa7; }
+    .alert.error { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb; }
+    
+    .period-indicator {
+      text-align: center; font-size: 24px; color: #667eea; font-weight: bold;
+      margin: 20px 0; padding: 15px; background: #f0f0ff; border-radius: 8px;
+    }
+    
+    .loading { text-align: center; padding: 20px; color: #667eea; }
+  </style>
+</head>
+<body>
+
+<!-- 登录界面 -->
+<div class="box" id="loginBox">
+  <h2>🏦 投资模拟系统</h2>
+  <div class="input-group">
+    <label>用户名</label>
+    <input id="username" placeholder="请输入用户名">
+  </div>
+  <div class="input-group">
+    <label>密码</label>
+    <input id="password" type="password" placeholder="请输入密码">
+  </div>
+  <button onclick="login()">登录</button>
+  <div id="loginError" class="alert error hidden"></div>
+</div>
+
+<!-- 用户界面 -->
+<div class="box hidden" id="userBox">
+  <h2>👤 用户投资面板</h2>
+  
+  <div class="stats-card">
+    <h4>当前资金 (Credit)</h4>
+    <div class="value" id="credit">100.00</div>
+  </div>
+  
+  <div class="grid">
+    <div class="stats-card" style="background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%);">
+      <h4>初始资金</h4>
+      <div class="value" style="font-size: 24px;" id="initialCredit">100.00</div>
+    </div>
+    <div class="stats-card" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);">
+      <h4>收益率</h4>
+      <div class="value" style="font-size: 24px;" id="returnRate">0%</div>
+    </div>
+  </div>
+
+  <h3>📊 投资操作</h3>
+  <div class="input-group">
+    <label>选择投资项目</label>
+    <select id="action"></select>
+  </div>
+  <button onclick="invest()">确认投资（全额）</button>
+  <button class="secondary" onclick="checkInvestStatus()">查看投资状态</button>
+
+  <h3>📜 投资历史</h3>
+  <div id="historyList"></div>
+
+  <button class="danger" onclick="logout()" style="margin-top: 30px;">退出登录</button>
+</div>
+
+<!-- 管理员界面 -->
+<div class="box hidden" id="adminBox">
+  <h2>👨‍💼 管理员控制面板</h2>
+  
+  <div class="period-indicator">
+    第 <span id="period">1</span> 期
+  </div>
+
+  <h3>👥 用户资金列表</h3>
+  <button onclick="refreshAdminData()" class="secondary">刷新数据</button>
+  <table>
+    <thead>
+      <tr>
+        <th>用户名</th>
+        <th>当前资金</th>
+        <th>收益率</th>
+        <th>当前投资</th>
+        <th>状态</th>
+      </tr>
+    </thead>
+    <tbody id="userTable"></tbody>
+  </table>
+
+  <h3>🏗️ 投资项目管理</h3>
+  <div class="input-group">
+    <label>新增项目</label>
+    <input id="newProject" placeholder="输入项目名称">
+  </div>
+  <button onclick="addProject()">➕ 添加项目</button>
+
+  <div class="input-group" style="margin-top: 15px;">
+    <label>删除项目</label>
+    <select id="deleteProject"></select>
+  </div>
+  <button class="danger" onclick="removeProject()">🗑️ 删除项目</button>
+
+  <h3>💹 本期涨跌百分比设置</h3>
+  <table>
+    <thead>
+      <tr>
+        <th>项目名称</th>
+        <th>涨跌百分比 (%)</th>
+      </tr>
+    </thead>
+    <tbody id="percentTable"></tbody>
+  </table>
+  <button onclick="settle()">✅ 确认并结算所有用户</button>
+
+  <button class="danger" onclick="logout()" style="margin-top: 30px;">退出登录</button>
+</div>
+
+<script>
+// API配置
+const API_URL = '/api';
+let token = localStorage.getItem('token');
+let currentUser = null;
+let projects = [];
+
+// API请求辅助函数
+async function apiRequest(endpoint, options = {}) {
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}${endpoint}`, {
+    ...options,
+    headers
+  });
+
+  const data = await response.json();
+
+  if (!response.ok) {
+    throw new Error(data.error || '请求失败');
+  }
+
+  return data;
+}
+
+// 登录
+async function login() {
+  try {
+    const username = document.getElementById('username').value.trim();
+    const password = document.getElementById('password').value;
+
+    if (!username || !password) {
+      showError('loginError', '请输入用户名和密码');
+      return;
+    }
+
+    const data = await apiRequest('/login', {
+      method: 'POST',
+      body: JSON.stringify({ username, password })
+    });
+
+    token = data.token;
+    localStorage.setItem('token', token);
+    currentUser = data.user;
+
+    document.getElementById('loginBox').classList.add('hidden');
+
+    if (currentUser.role === 'admin') {
+      document.getElementById('adminBox').classList.remove('hidden');
+      await loadAdminPanel();
+    } else {
+      document.getElementById('userBox').classList.remove('hidden');
+      await loadUserPanel();
+    }
+  } catch (error) {
+    showError('loginError', error.message);
+  }
+}
+
+// 显示错误信息
+function showError(elementId, message) {
+  const errorDiv = document.getElementById(elementId);
+  errorDiv.textContent = message;
+  errorDiv.classList.remove('hidden');
+  setTimeout(() => errorDiv.classList.add('hidden'), 5000);
+}
+
+// 加载用户面板
+async function loadUserPanel() {
+  try {
+    // 获取用户信息
+    const userData = await apiRequest('/user');
+    currentUser = userData;
+
+    // 显示资金信息
+    document.getElementById('credit').textContent = userData.credit.toFixed(2);
+    document.getElementById('initialCredit').textContent = userData.initialCredit.toFixed(2);
+    
+    const returnRate = ((userData.credit - userData.initialCredit) / userData.initialCredit * 100).toFixed(2);
+    document.getElementById('returnRate').textContent = returnRate + '%';
+
+    // 加载项目列表
+    await loadProjects();
+
+    // 加载历史记录
+    await loadHistory();
+  } catch (error) {
+    alert('加载用户数据失败: ' + error.message);
+  }
+}
+
+// 加载项目列表
+async function loadProjects() {
+  try {
+    const projectsData = await apiRequest('/projects');
+    projects = projectsData;
+
+    const select = document.getElementById('action');
+    select.innerHTML = '';
+    
+    projects.forEach(p => {
+      const option = document.createElement('option');
+      option.value = p.name;
+      option.textContent = p.name;
+      select.appendChild(option);
+    });
+  } catch (error) {
+    console.error('加载项目失败:', error);
+  }
+}
+
+// 加载历史记录
+async function loadHistory() {
+  try {
+    const history = await apiRequest('/history');
+    const historyList = document.getElementById('historyList');
+    historyList.innerHTML = '';
+
+    if (history.length === 0) {
+      historyList.innerHTML = '<div class="alert success">暂无投资记录</div>';
+    } else {
+      history.forEach(h => {
+        const div = document.createElement('div');
+        div.className = 'history-item';
+
+        let message = '';
+        if (h.action === '确认投资') {
+          message = `✅ 第 ${h.period} 期：${h.action} - ${h.project}`;
+        } else if (h.action === '期结算') {
+          const change = h.credit_after - h.credit_before;
+          const changeStr = change >= 0 ? `+${change.toFixed(2)}` : change.toFixed(2);
+          message = `💰 第 ${h.period} 期结算：${h.project} ${h.percentage > 0 ? '📈' : h.percentage < 0 ? '📉' : '➡️'} ${h.percentage}%，${h.credit_before.toFixed(2)} → ${h.credit_after.toFixed(2)} (${changeStr})`;
+          
+          if (h.percentage > 0) div.classList.add('profit');
+          else if (h.percentage < 0) div.classList.add('loss');
+        }
+
+        div.textContent = message;
+        historyList.appendChild(div);
+      });
+    }
+  } catch (error) {
+    console.error('加载历史记录失败:', error);
+  }
+}
+
+// 投资
+async function invest() {
+  try {
+    if (currentUser.investedProject) {
+      alert('⚠️ 您已投资项目，请等待管理员结算');
+      return;
+    }
+
+    const project = document.getElementById('action').value;
+    
+    await apiRequest('/invest', {
+      method: 'POST',
+      body: JSON.stringify({ project })
+    });
+
+    alert(`✅ 已确认投资项目：${project}\n\n⚠️ 注意：投资已锁定，无法更改！\n请等待管理员结算后才能进行新的投资。`);
+    
+    await loadUserPanel();
+  } catch (error) {
+    alert('投资失败: ' + error.message);
+  }
+}
+
+// 查看投资状态
+function checkInvestStatus() {
+  if (!currentUser.investedProject) {
+    alert('ℹ️ 投资状态\n\n当前没有投资项目\n您可以选择项目并确认投资');
+  } else {
+    alert(`ℹ️ 投资状态\n\n当前投资项目：${currentUser.investedProject}\n状态：已锁定\n\n⚠️ 投资项目已确认，无法更改！\n请等待管理员结算后再进行新的投资操作。`);
+  }
+}
+
+// ==================== 管理员功能 ====================
+
+async function loadAdminPanel() {
+  try {
+    await loadPeriod();
+    await loadAdminProjects();
+    await refreshAdminData();
+  } catch (error) {
+    alert('加载管理员面板失败: ' + error.message);
+  }
+}
+
+async function loadPeriod() {
+  try {
+    const data = await apiRequest('/admin-period');
+    document.getElementById('period').textContent = data.period;
+  } catch (error) {
+    console.error('加载期数失败:', error);
+  }
+}
+
+async function loadAdminProjects() {
+  try {
+    const projectsData = await apiRequest('/projects');
+    projects = projectsData;
+
+    // 更新删除项目下拉列表
+    const deleteSelect = document.getElementById('deleteProject');
+    deleteSelect.innerHTML = '';
+    projects.forEach(p => {
+      const option = document.createElement('option');
+      option.value = p.name;
+      option.textContent = p.name;
+      deleteSelect.appendChild(option);
+    });
+
+    // 更新百分比设置表格
+    const percentTable = document.getElementById('percentTable');
+    percentTable.innerHTML = '';
+    projects.forEach(p => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${p.name}</strong></td>
+        <td><input type="number" id="pct_${p.name}" placeholder="例如：10 或 -5" step="0.1" value="0"></td>
+      `;
+      percentTable.appendChild(tr);
+    });
+  } catch (error) {
+    console.error('加载项目失败:', error);
+  }
+}
+
+async function refreshAdminData() {
+  try {
+    const users = await apiRequest('/admin-users');
+    const table = document.getElementById('userTable');
+    table.innerHTML = '';
+
+    users.forEach(u => {
+      const returnRate = ((u.credit - u.initial_credit) / u.initial_credit * 100).toFixed(2);
+      const status = u.invested_project ? 
+        '<span class="status-badge invested">已投资</span>' : 
+        '<span class="status-badge waiting">待投资</span>';
+
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td><strong>${u.username}</strong></td>
+        <td>${u.credit.toFixed(2)}</td>
+        <td style="color: ${returnRate >= 0 ? '#4caf50' : '#f44336'}">${returnRate}%</td>
+        <td>${u.invested_project || '-'}</td>
+        <td>${status}</td>
+      `;
+      table.appendChild(tr);
+    });
+  } catch (error) {
+    console.error('刷新用户数据失败:', error);
+  }
+}
+
+async function addProject() {
+  try {
+    const name = document.getElementById('newProject').value.trim();
+    if (!name) {
+      alert('⚠️ 请输入项目名称');
+      return;
+    }
+
+    await apiRequest('/projects', {
+      method: 'POST',
+      body: JSON.stringify({ name })
+    });
+
+    document.getElementById('newProject').value = '';
+    alert(`✅ 项目 "${name}" 已添加`);
+    await loadAdminProjects();
+  } catch (error) {
+    alert('添加项目失败: ' + error.message);
+  }
+}
+
+async function removeProject() {
+  try {
+    const name = document.getElementById('deleteProject').value;
+    if (!name) {
+      alert('⚠️ 请选择要删除的项目');
+      return;
+    }
+
+    if (!confirm(`确认删除项目 "${name}"？`)) {
+      return;
+    }
+
+    await apiRequest(`/projects?name=${encodeURIComponent(name)}`, {
+      method: 'DELETE'
+    });
+
+    alert(`✅ 项目 "${name}" 已删除`);
+    await loadAdminProjects();
+  } catch (error) {
+    alert('删除项目失败: ' + error.message);
+  }
+}
+
+async function settle() {
+  try {
+    const marketPercent = {};
+    projects.forEach(p => {
+      const value = parseFloat(document.getElementById('pct_' + p.name).value) || 0;
+      marketPercent[p.name] = value;
+    });
+
+    const result = await apiRequest('/admin-settle', {
+      method: 'POST',
+      body: JSON.stringify({ marketPercent })
+    });
+
+    alert(`✅ 结算完成！\n已结算 ${result.settledCount} 个用户\n进入第 ${result.newPeriod} 期`);
+    
+    await loadPeriod();
+    await refreshAdminData();
+    
+    // 重置百分比输入
+    projects.forEach(p => {
+      document.getElementById('pct_' + p.name).value = '0';
+    });
+  } catch (error) {
+    alert('结算失败: ' + error.message);
+  }
+}
+
+// 登出
+function logout() {
+  if (confirm('确认退出登录？')) {
+    localStorage.removeItem('token');
+    location.reload();
+  }
+}
+
+// 页面加载时检查是否已登录
+window.onload = async function() {
+  if (token) {
+    try {
+      const userData = await apiRequest('/user');
+      currentUser = userData;
+      
+      document.getElementById('loginBox').classList.add('hidden');
+      
+      if (currentUser.role === 'admin') {
+        document.getElementById('adminBox').classList.remove('hidden');
+        await loadAdminPanel();
+      } else {
+        document.getElementById('userBox').classList.remove('hidden');
+        await loadUserPanel();
+      }
+    } catch (error) {
+      // Token无效，清除并重新登录
+      localStorage.removeItem('token');
+      token = null;
+    }
+  }
+};
+</script>
+
+</body>
+</html>
