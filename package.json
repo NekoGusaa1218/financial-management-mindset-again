@@ -1,0 +1,17 @@
+{
+  "name": "investment-simulation-vercel",
+  "version": "1.0.0",
+  "description": "投资模拟系统 - Vercel无服务器版本",
+  "main": "api/login.js",
+  "scripts": {
+    "dev": "vercel dev",
+    "deploy": "vercel --prod"
+  },
+  "keywords": ["investment", "simulation", "vercel", "serverless"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "bcrypt": "^5.1.1",
+    "jsonwebtoken": "^9.0.2"
+  }
+}
